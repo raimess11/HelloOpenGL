@@ -16,6 +16,7 @@
 #include<glm/glm.hpp>
 #include<glm/gtc/matrix_transform.hpp>
 #include<glm/gtc/type_ptr.hpp>
+#include<Camera.h>
 
 using namespace glm;
 
@@ -138,6 +139,13 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
 
+    //camera
+    Camera camera(SCR_WIDTH, SCR_HEIGHT, glm::vec3(0.0f, 0.0f, 2.0f));
+
+    double now, elapsed_time, last_render_time, render_time, start_render, end_render;
+    float fps = 60;
+    float time;
+
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -146,6 +154,11 @@ int main()
         // -----
         processInput(window);
 
+        double now = clock();
+        double elapsed_time =  (now + render_time) - last_render_time;
+        
+        if ( elapsed_time < 1000/fps){continue;}
+        start_render = clock();
         // render
         // ------
         glClearColor(0.075f, 0.2f, 0.05f, 1.0f);
@@ -164,28 +177,10 @@ int main()
         // Tell OpenGL which Shader Program we want to use
         shaderProgram.Activate();
 
-        // Simple timer
-		double crntTime = glfwGetTime();
-		if (crntTime - prevTime >= 1 / 60)
-		{
-			rotation += 0.025f;
-			prevTime = crntTime;
-		}
-
-        mat4 model = mat4(1.0f);
-        mat4 view = mat4(1.0f);
-        mat4 proj = mat4(1.0f);
-
-        model = glm::rotate(model, glm::radians(rotation), glm::vec3(0.0f, 1.0f, 0.0f));
-        view = translate(view, vec3(0.0f, -0.5f, -2.f));
-        proj = perspective(radians(45.0f), (float)(SCR_HEIGHT/SCR_HEIGHT), 0.1f, 100.0f);
-
-        int modelLoc = glGetUniformLocation(shaderProgram.ID, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, value_ptr(model));
-        int viewLoc = glGetUniformLocation(shaderProgram.ID, "view");
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, value_ptr(view));
-        int projLoc = glGetUniformLocation(shaderProgram.ID, "proj");
-        glUniformMatrix4fv(projLoc, 1, GL_FALSE, value_ptr(proj));
+        // Handles camera inputs
+		camera.Inputs(window);
+		// Updates and exports the camera matrix to the Vertex Shader
+		camera.Matrix(45.0f, 0.1f, 100.0f, shaderProgram, "camMatrix");
         
         glUniform1f(uniID_scale, 0.2f);
         float current = clock();
@@ -199,6 +194,11 @@ int main()
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
+
+        end_render = clock();
+        render_time = end_render - start_render;
+        last_render_time = now;
+
         glfwPollEvents(); //so the window not just inactive
     }
 
